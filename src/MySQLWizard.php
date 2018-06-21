@@ -19,7 +19,7 @@ class MySQLWizard{
 		$this->table = '';
         $this->connect = $this->connect();
     }
-    
+
     private function connect(){
         $connect = mysqli_connect($this->database_sets->host,$this->database_sets->user,$this->database_sets->password,$this->database_sets->database);
         return $connect;
@@ -122,7 +122,7 @@ class MySQLWizard{
         }elseif(is_string($campoWhere)){
             $query.=$campoWhere;
         }
-        
+
         $result = $this->query($query);
         if(!$result){
             return $result;
@@ -141,7 +141,7 @@ class MySQLWizard{
 	 * @param string $tabela tabela que comtem os dados que devem ser atualizados
 	 * @return bool
 	 */
-    function update($dados,$tabela='',$campoWhere){
+    function update($dados,$campoWhere,$tabela=''){
 		if($tabela==''){
 			$tabela = $this->table;
 		}
@@ -150,33 +150,33 @@ class MySQLWizard{
         $query = "UPDATE ".$tabela." SET ";
 
         $valores ='';
+        $campoWhereS = array_keys($campoWhere)[0];
 
         foreach ($dados as $key=>$value){
-            if($key!=$campoWhere){
-                $valores.= $key.'='.$this->isNumeric($value).', ';
+            if($key!=$campoWhereS){
+                $valores.= $key.'='.$this->isNumeric($value).',';
             }
         }
         $valores = $this->removeVirgula($valores);
 
-        $query.=" WHERE ".$campoWhere."=".$this->isNumeric($dados[$campoWhere]);
-
+        $query.= $valores." WHERE ".$campoWhereS." = ".$this->isNumeric($campoWhere[$campoWhereS]);
         $result = $this->query($query);
         return $result;
 
     }
 
-    function delete($campoWhere,$soft=true,$tabela=''){
+    function delete($campoWhere,$soft='',$tabela=''){
 		if($tabela==''){
 			$tabela = $this->table;
 		}
 		$this->verificaTabela($tabela);
 
-        if($soft){
-            $query = "UPDATE ".$tabela." SET ativo=0 ";
+        if($soft!=''){
+            $query = "UPDATE ".$tabela." SET ".$soft."=0 ";
         }else{
             $query = "DELETE FROM ".$tabela;
         }
-        $query.= " WHERE ".$campoWhere['campo']." = ".$this->isNumeric($campoWhere["valor"]);
+        $query.= " WHERE ".array_keys($campoWhere)[0]." = ".$this->isNumeric($campoWhere[array_keys($campoWhere)[0]]);
 
         $result = $this->query($query);
         return $result;
@@ -210,7 +210,7 @@ class MySQLWizard{
 	}
 	
 	function verificaTabela($tabela){
-		if($this->table=''&&$tabela==''){
+		if($this->table==''&&$tabela==''){
 			throw new Exception('A tabela para executar a operação não está setada, utilize set_table("usuarios").');
 		}
 	}
