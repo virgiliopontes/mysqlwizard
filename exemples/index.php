@@ -21,36 +21,74 @@
                 CREATE TABLE IF NOT EXISTS `usuarios` ( `id` INT NOT NULL AUTO_INCREMENT , `nome` VARCHAR(120) NOT NULL , `email` VARCHAR(120) NOT NULL , `senha` VARCHAR(120) NOT NULL , `data_cad` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `ativo` TINYINT NOT NULL DEFAULT '1' , PRIMARY KEY (`id`)) ENGINE = InnoDB;"
                 ); */
             $this->mysql->set_table('usuarios');
+            echo 'Inserir apenas 1 Item';
             $usuario = array(
                 'nome'=>'Virgilio Pontes',
                 'email'=>'vrgiliocpontes@outlook.com',
                 'senha'=>'password'
             );
             $id = $this->insert($usuario);
-
             $campoWhere = array(
                 'id'=>$id //ID do Usuário
             );
             var_dump($campoWhere);
             var_dump($this->select($campoWhere));
-
+            
+            echo 'Array de itens';
+            $usuario = array(
+                array(
+                    'nome'=>'Virgilio1',
+                    'email'=>'vrgiliocp@outlook.com',
+                    'senha'=>'password1'
+                ),
+                array(
+                    'nome'=>'Virgilio2',
+                    'email'=>'vrgiliocpo@outlook.com',
+                    'senha'=>'password2'
+                ),
+               
+            );
+            var_dump($this->insert($usuario));
+            
+            echo'Atualizar dados de um Item';
             $usuario = array(
                 'nome'=>'Virgilio'
             );
-
             var_dump($this->update($usuario,$campoWhere));
             var_dump($this->select($campoWhere));
+            
+            echo 'Deletando um item';
             var_dump($this->delete($campoWhere));
             var_dump($this->select($campoWhere));
+            
+            echo 'Campo Nulo e mais de um argumento';
+            $campoWhere = array(
+                'nome !='=>'NULL',
+                'senha'=>'password2'
+            );
+
+            var_dump($this->select($campoWhere));
+            //Campos Nulos
+            $campoWhere = array(
+                'nome ='=>'NULL'
+            );
+            var_dump($this->select($campoWhere));
+            
+            echo 'Toda a Tabela';
+            var_dump($this->select());
         }
 
 		function insert($array){
-			
-            $result = $this->mysql->insert($array);
+			if(isset($array[0])){
+                $result = $this->mysql->insert_batch($array);
+            }else{
+                $result = $this->mysql->insert($array);
+            }
+            
 			return $result; //ID || false
         }
 
-        function select($array){
+        function select($array=''){
 
             $result = $this->mysql->select($array);
 			return $result; //array

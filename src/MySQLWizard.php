@@ -13,15 +13,29 @@ class MySQLWizard{
 				'host'=>'127.0.0.1',
 				'user'=>'root',
 				'password'=>'',
-				'database'=>'teste'
+                'database'=>'teste',
+                'charset'=>'utf8',
+                'country'=>'Brazil'
 			);
 		}
 		$this->table = '';
-        $this->connect = $this->connect();
+        $this->connect();
     }
 
     private function connect(){
         $connect = mysqli_connect($this->database_sets->host,$this->database_sets->user,$this->database_sets->password,$this->database_sets->database);
+        $this->connect = $connect;
+        if(isset($this->database_sets->charset)){
+            $this->connect->set_charset($this->database_sets->charset);
+        }
+        
+        if(isset($this->database_sets->country)&&$this->database_sets->country=='Brazil'){
+            //Seta o tipo de Carcateres do Banco de Dados para UTF8
+            $this->query("SET time_zone = '-3:00'");
+            $this->query('SET sql_mode = ""');
+            $this->query('SET NAMES utf8');
+        }
+      
         return $connect;
     }
 
@@ -61,7 +75,7 @@ class MySQLWizard{
         $campos.=') ';
         $valores.=') ';
         $query.= $campos.'VALUES'.$valores;
-
+        
         $result = $this->query($query);
         return $result==false ? $result : mysqli_insert_id($this->connect);
 
@@ -79,7 +93,7 @@ class MySQLWizard{
 		}
 		$this->verificaTabela($tabela);
 
-        $query = "INSERT INTO".$tabela;
+        $query = "INSERT INTO ".$tabela;
 
         $campos =' (';
         foreach ($dados[0] as $key=>$value){
@@ -87,14 +101,15 @@ class MySQLWizard{
         }
         $campos = $this->removeVirgula($campos);
         $campos.=') ';
-    
+
+        $valores = '';
         foreach($dados as $key=>$value){
-            $valores =' (';
+            $valores .=' (';
             foreach ($value as $key=>$value){                
                 $valores.= $this->isNumeric($value).',';
             }
             $valores = $this->removeVirgula($valores);
-            $valores.='), ';
+            $valores.='),';
         }
         $valores = $this->removeVirgula($valores);
         
@@ -105,22 +120,22 @@ class MySQLWizard{
 	}
 
 	/**
-	 * @param array $campo Array com o campo e valor que deve ser usado para buscar os dados no banco
+	 * @param array $campoWhere Array com o campo e valor que deve ser usado para buscar os dados no banco, se vazio retorna toda a tabela
 	 * @param string $tabela tabela que comtem os dados que devem ser selecionados
 	 * @return array Retorna um Array de objetos
 	 */
-	function select($campoWhere,$tabela=''){
+	function select($campoWhere='',$tabela=''){
 		if($tabela==''){
 			$tabela = $this->table;
 		}
 		$this->verificaTabela($tabela);
 
-        $query = "SELECT * FROM ".$tabela." WHERE ";
+        $query = "SELECT * FROM ".$tabela;
 
         if(is_array($campoWhere)){
-            $query.=$this->make_where($campoWhere);
-        }elseif(is_string($campoWhere)){
-            $query.=$campoWhere;
+            $query.=" WHERE ".$this->make_where($campoWhere);
+        }elseif(is_string($campoWhere)&&$campoWhere!=''){
+            $query.=" WHERE ".$campoWhere;
         }
 
         $result = $this->query($query);
@@ -132,12 +147,13 @@ class MySQLWizard{
 			$array[] = (object)$dados;
 		}
 
-        return $array;
+        return isset($array) ? $array : array();
 	}
 	
 	/**
 	 * Atualiza atravez do $campoWhere os dados de uma determianda linha no banco de dados
 	 * @param array $dados Colunas e valores que devem ser atualizados
+	 * @param array $campoWhere Coluna e valor que deve ser utilizado no WHERE
 	 * @param string $tabela tabela que comtem os dados que devem ser atualizados
 	 * @return bool
 	 */
@@ -160,6 +176,7 @@ class MySQLWizard{
         $valores = $this->removeVirgula($valores);
 
         $query.= $valores." WHERE ".$campoWhereS." = ".$this->isNumeric($campoWhere[$campoWhereS]);
+
         $result = $this->query($query);
         return $result;
 
@@ -181,14 +198,24 @@ class MySQLWizard{
         $result = $this->query($query);
         return $result;
     }
-
+    
+    /**
+     * Verifica se a String é numeral, se não for adiciona "" para INSERT e SELECT
+     * @param string $value = 'Maria' || '1' || 'NOW()'
+     * @return string '"Maria"' || '1' || 'NOW()'
+     */
     private function isNumeric($value){
-        if(!is_numeric($value)&&!is_null($value)){
+        if(!is_numeric($value)&&!is_null($value)&&$value!='NOW()'){
             $value = "'".$value."'";
         }
         return $value;
     }
-
+    
+    /**
+     * Remove o ultimo caracter de uma string, utilizado para remover a virgula dos INSERT
+     * @param string $string = 'Virgilio,'
+     * @return string 'Virgilio'
+     */
     private function removeVirgula($string){
         return substr($string,0, strlen($string)-1);
     }
@@ -200,10 +227,19 @@ class MySQLWizard{
         $where = '';
         foreach($array as $key=>$value){
             $keys = explode(' ',$key);
+            $campo = $keys[0];
+            $operador = isset($keys[1])&&is_array($keys) ? ' '.$keys[1].' ' : ' = ' ;
+
             if($where!=''){
-                $where.= ' and ';
+                $where.= ' AND ';
             }
-            $where .= $keys[0].(isset($keys[1]) ? $keys[1]:'=').$this->isNumeric($value);
+
+            if($value!='NULL'){
+                $where .= $campo.$operador.$this->isNumeric($value);
+            }else{
+                $where .= '( '.$campo.($operador==' = ' ? ' IS ' : ' IS NOT ').$value.' )';
+            }
+            
         }
         
         return $where;
