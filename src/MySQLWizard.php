@@ -19,7 +19,7 @@ class MySQLWizard{
 
 		if($database_sets!=''){
             $database_sets = (array)$database_sets;
-            foreach($$database_sets_defalt as $key=>$value){
+            foreach($database_sets_defalt as $key=>$value){
                 if(!isset($database_sets[$key])){
                     $database_sets[$key] = $database_sets_defalt->{$key};
                 }
