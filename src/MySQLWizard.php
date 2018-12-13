@@ -6,24 +6,35 @@ class MySQLWizard{
      * @param array $database_sets Array com os dados de conexão com o banco;
      */ 
 	function __construct($database_sets=''){
+        $database_sets_defalt = (object)array(
+            'host'=>'127.0.0.1',
+            'port'=>'3306',
+            'user'=>'root',
+            'password'=>'',
+            'database'=>'teste',
+            'charset'=>'utf8',
+            'country'=>'Brazil',
+            'echo_msg'=>false
+        );
+
 		if($database_sets!=''){
-			$this->database_sets = $database_sets;
+            $database_sets = (array)$database_sets;
+            foreach($$database_sets_defalt as $key=>$value){
+                if(!isset($database_sets[$key])){
+                    $database_sets[$key] = $database_sets_defalt->{$key};
+                }
+            }
+            $this->database_sets = (object)$database_sets;
 		}else{
-			$this->database_sets = (object)array(
-				'host'=>'127.0.0.1',
-				'user'=>'root',
-				'password'=>'',
-                'database'=>'teste',
-                'charset'=>'utf8',
-                'country'=>'Brazil'
-			);
-		}
+			$this->database_sets = $database_sets_defalt;
+        }
+       
 		$this->table = '';
         $this->connect();
     }
 
     private function connect(){
-        $connect = mysqli_connect($this->database_sets->host,$this->database_sets->user,$this->database_sets->password,$this->database_sets->database);
+        $connect = mysqli_connect($this->database_sets->host,$this->database_sets->user,$this->database_sets->password,$this->database_sets->database,$this->database_sets->port);
         $this->connect = $connect;
         if(isset($this->database_sets->charset)){
             $this->connect->set_charset($this->database_sets->charset);
@@ -37,6 +48,60 @@ class MySQLWizard{
         }
       
         return $connect;
+    }
+
+    function statusMsg($status){
+        return $status ? '<span style=" color:green">OK</span>':'<span style="color:red">ERRO</span>';
+    }
+
+    function trans_start(){
+        $status = mysqli_begin_transaction($this->connect,MYSQLI_TRANS_START_READ_WRITE);
+        if($this->database_sets->echo_msg){
+            echo'Início da transação Status: '.$this->statusMsg($status).'<br>';
+        }else{
+            return $status;
+        }
+       
+    }
+
+    function trans_commit(){
+        $status = mysqli_commit($this->connect);
+        if($this->database_sets->echo_msg){
+            echo'Commit Transação: '.$this->statusMsg($status).'<br>';
+        }else{
+            return $status;
+        }
+        
+    }
+
+    function trans_rollback(){
+        $status = mysqli_rollback($this->connect);
+        if($this->database_sets->echo_msg){
+            echo'Voltar Transação: '.$this->statusMsg($status).'<br>';
+        }else{
+            return $status;
+        }
+       
+    }
+
+    function close(){
+        $status = mysqli_close($this->connect);
+        if($this->database_sets->echo_msg){
+            echo'Fechar Conexão: '.$this->statusMsg($status).'<br>';
+        }else{
+            return $status;
+        }
+        
+    }
+
+    function affected_rows(){
+        return mysqli_affected_rows($this->connect);
+    }
+
+    function qtdLinhasTabela($tabela){
+        $result = $this->query('SELECT count(*) as total FROM '.$tabela);
+        $qtdlinhas = mysqli_fetch_assoc($result)['total'];
+        return $qtdlinhas; 
     }
 
     function query($query){
@@ -75,7 +140,7 @@ class MySQLWizard{
         $campos.=') ';
         $valores.=') ';
         $query.= $campos.'VALUES'.$valores;
-        
+
         $result = $this->query($query);
         return $result==false ? $result : mysqli_insert_id($this->connect);
 
@@ -153,7 +218,7 @@ class MySQLWizard{
 	/**
 	 * Atualiza atravez do $campoWhere os dados de uma determianda linha no banco de dados
 	 * @param array $dados Colunas e valores que devem ser atualizados
-	 * @param array $campoWhere Coluna e valor que deve ser utilizado no WHERE
+     * @param array $campoWhere Coluna e valor que deve ser utilizado no WHERE
 	 * @param string $tabela tabela que comtem os dados que devem ser atualizados
 	 * @return bool
 	 */
@@ -198,7 +263,7 @@ class MySQLWizard{
         $result = $this->query($query);
         return $result;
     }
-    
+
     /**
      * Verifica se a String é numeral, se não for adiciona "" para INSERT e SELECT
      * @param string $value = 'Maria' || '1' || 'NOW()'
