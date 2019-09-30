@@ -23,7 +23,7 @@ class MySQLWizard
             'echo_msg'=>false
         );
 
-        if (empty($database_sets)) {
+        if (!empty($database_sets)) {
             $database_sets = (array)$database_sets;
             foreach ($database_sets_defalt as $key=>$value) {
                 if (!isset($database_sets[$key])) {
